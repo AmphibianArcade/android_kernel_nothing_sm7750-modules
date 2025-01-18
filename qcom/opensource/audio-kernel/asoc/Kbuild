@@ -224,6 +224,11 @@ ifdef CONFIG_SND_SOC_SDX
 	MACHINE_OBJS += sdx-target.o
 endif
 
+# for SUN sound card driver
+ifdef CONFIG_SND_SOC_SUN
+	MACHINE_OBJS += sun.o
+endif
+
 ifdef CONFIG_SND_SOC_GVM_AUTO_SPF
     SPF_MACHINE_OBJS += gvm_auto_spf_dummy.o
 endif
@@ -307,6 +312,9 @@ obj-$(CONFIG_SND_SOC_SA8155) += machine_dlkm.o
 machine_dlkm-y := $(MACHINE_OBJS)
 
 obj-$(CONFIG_SND_SOC_SDX) += machine_dlkm.o
+machine_dlkm-y := $(MACHINE_OBJS)
+
+obj-$(CONFIG_SND_SOC_SUN) += machine_dlkm.o
 machine_dlkm-y := $(MACHINE_OBJS)
 
 obj-$(CONFIG_SND_SOC_GVM_AUTO_SPF) += spf_machine_dlkm.o
