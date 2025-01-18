@@ -1,9 +1,15 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 KDIR := $(TOP)/kernel_platform/msm-kernel
+ifeq ($(CONFIG_ARCH_SUN), y)
+include $(MSM_HW_FENCE_ROOT)hw_fence/sun_defconfig
+LINUXINCLUDE += -include $(MSM_HW_FENCE_ROOT)hw_fence/sun_defconfig.h \
+		-I$(MSM_HW_FENCE_ROOT)hw_fence/include/
+else
 include $(MSM_HW_FENCE_ROOT)/config/kalamammdrivers.conf
 LINUXINCLUDE += -include $(MSM_HW_FENCE_ROOT)/config/kalamammdriversconf.h \
 		-I$(MSM_HW_FENCE_ROOT)hw_fence/include/
+endif
 
 ifdef CONFIG_QTI_HW_FENCE
 obj-m += msm_hw_fence.o
