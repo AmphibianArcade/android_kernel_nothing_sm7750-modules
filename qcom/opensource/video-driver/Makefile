@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
+VIDEO_ROOT := $(KERNEL_SRC)/$(M)
+KBUILD_OPTIONS += VIDEO_ROOT=$(VIDEO_ROOT)
+
 all: modules
 
 modules:
