@@ -1,3 +1,12 @@
+ifeq ($(CONFIG_ARCH_SUN), y)
+export CONFIG_MSM_BT_POWER := m
+export CONFIG_I2C_RTC6226_QCA := m
+export CONFIG_SLIM_BTFM_CODEC := m
+export CONFIG_BTFM_CODEC := m
+export CONFIG_BTFM_SWR := m
+export CONFIG_FMD_ENABLE := y
+endif
+
 ifeq ($(CONFIG_MSM_BT_POWER),m)
 KBUILD_CPPFLAGS += -DCONFIG_MSM_BT_POWER
 endif
