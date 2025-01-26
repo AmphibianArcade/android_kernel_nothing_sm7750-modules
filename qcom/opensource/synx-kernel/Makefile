@@ -1,4 +1,5 @@
 KBUILD_OPTIONS+= SYNX_ROOT=$(KERNEL_SRC)/$(M)
+KBUILD_OPTIONS += KBUILD_EXTRA_SYMBOLS=$(M)/../mm-drivers/hw_fence/Module.symvers
 
 all:
 	$(MAKE) -C $(KERNEL_SRC) M=$(M) modules $(KBUILD_OPTIONS)
