@@ -5,6 +5,8 @@ M=$(PWD)
 BT_ROOT=$(KERNEL_SRC)/$(M)
 
 KBUILD_OPTIONS+=  BT_ROOT=$(BT_ROOT)
+KBUILD_OPTIONS += KBUILD_EXTRA_SYMBOLS=$(M)/../audio-kernel/Module.symvers
+KBUILD_OPTIONS += KBUILD_EXTRA_SYMBOLS+=$(M)/../wlan/platform/Module.symvers
 
 all:
 	$(MAKE) -C $(KERNEL_SRC) M=$(M) modules $(KBUILD_OPTIONS)
