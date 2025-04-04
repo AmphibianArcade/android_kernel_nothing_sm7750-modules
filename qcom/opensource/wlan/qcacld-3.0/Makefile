@@ -28,11 +28,15 @@ else
 KBUILD_OPTIONS += MODNAME?=wlan
 endif
 
+WLAN_CHIPSET := qca_cld3
+LOCAL_DEV_NAME := $(patsubst .%,%,\
+	$(lastword $(strip $(subst /, ,$(M)))))
+
 KBUILD_EXTRA := \
-    WLAN_PROFILE=sun_gki_qca6750 \
-    MODNAME=qca_cld3_qca6750 \
-	CONFIG_CNSS_OUT_OF_TREE=y \
-	KBUILD_EXTRA_SYMBOLS=$(M)/../platform/Module.symvers
+    WLAN_PROFILE=$(LOCAL_DEV_NAME) \
+    DYNAMIC_SINGLE_CHIP=$(LOCAL_DEV_NAME) \
+    MODNAME=$(WLAN_CHIPSET)_$(LOCAL_DEV_NAME) \
+    DEVNAME=$(LOCAL_DEV_NAME)
 
 #By default build for CLD
 WLAN_SELECT := CONFIG_QCA_CLD_WLAN=m
