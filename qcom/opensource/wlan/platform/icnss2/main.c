@@ -1573,7 +1573,7 @@ static void icnss_host_ramdump_dev_release(struct device *dev)
 	kfree(dev);
 }
 
-const char *icnss_get_wlan_str(enum cnss_host_dump_type type)
+static const char *icnss_get_wlan_str(enum cnss_host_dump_type type)
 {
 	switch (type) {
 	case CNSS_HOST_WLAN_LOGS:
@@ -1809,7 +1809,7 @@ const char *icnss_get_wlan_str(enum cnss_host_dump_type type)
     }
 }
 
-int icnss_do_host_ramdump(struct icnss_priv *priv,
+static int icnss_do_host_ramdump(struct icnss_priv *priv,
 			  struct cnss_ssr_driver_dump_entry *ssr_entry,
 			  size_t num_entries_loaded)
 {
@@ -1909,7 +1909,7 @@ put_device:
 	return ret;
 }
 
-void icnss_collect_host_dump_info(struct icnss_priv *priv)
+static void icnss_collect_host_dump_info(struct icnss_priv *priv)
 {
 	struct cnss_ssr_driver_dump_entry *ssr_entry;
 	size_t num_entries_loaded = 0;
