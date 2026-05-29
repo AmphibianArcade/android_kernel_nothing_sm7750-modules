@@ -16,16 +16,16 @@
 #include <linux/mailbox/qmp.h>
 #endif
 #ifdef CONFIG_CNSS_OUT_OF_TREE
-#include "icnss2.h"
+#include <icnss2.h>
 #else
 #include <soc/qcom/icnss2.h>
 #endif
 #if IS_ENABLED(CONFIG_INTERCONNECT)
 #include <linux/interconnect.h>
 #endif
-#include "wlan_firmware_service_v01.h"
-#include "cnss_prealloc.h"
-#include "cnss_common.h"
+#include <wlan_firmware_service_v01.h>
+#include <cnss_prealloc.h>
+#include <cnss_common.h>
 #include <linux/mailbox_client.h>
 #include <linux/timer.h>
 #include <linux/sched_clock.h>

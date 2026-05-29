@@ -13,7 +13,7 @@
 #include <linux/version.h>
 #include "cnss_common.h"
 #ifdef CONFIG_CNSS_OUT_OF_TREE
-#include "cnss_prealloc.h"
+#include <cnss_prealloc.h>
 #else
 #include <net/cnss_prealloc.h>
 #endif

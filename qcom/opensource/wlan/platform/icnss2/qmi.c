@@ -23,12 +23,12 @@
 #include <linux/soc/qcom/qmi.h>
 #include <linux/platform_device.h>
 #ifdef CONFIG_CNSS_OUT_OF_TREE
-#include "icnss2.h"
+#include <icnss2.h>
 #else
 #include <soc/qcom/icnss2.h>
 #endif
 #include <soc/qcom/of_common.h>
-#include "wlan_firmware_service_v01.h"
+#include <wlan_firmware_service_v01.h>
 #include "main.h"
 #include "qmi.h"
 #include "debug.h"
