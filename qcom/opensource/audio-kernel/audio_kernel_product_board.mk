@@ -40,7 +40,8 @@ ifeq ($(call is-board-platform-in-list,sun tuna), true)
 PRODUCT_PACKAGES += $(KERNEL_MODULES_OUT)/lpass_bt_swr_dlkm.ko
 PRODUCT_PACKAGES += $(KERNEL_MODULES_OUT)/wcd9378_slave_dlkm.ko \
 PRODUCT_PACKAGES += $(KERNEL_MODULES_OUT)/wcd9378_dlkm.ko \
-PRODUCT_PACKAGES += $(KERNEL_MODULES_OUT)/qmp_dlkm.ko
+PRODUCT_PACKAGES += $(KERNEL_MODULES_OUT)/qmp_dlkm.ko \
+PRODUCT_PACKAGES += $(KERNEL_MODULES_OUT)/aw882xx_dlkm.ko
 endif
 ifeq ($(call is-board-platform-in-list,bengal holi blair), true)
 PRODUCT_PACKAGES += $(KERNEL_MODULES_OUT)/bolero_cdc_dlkm.ko \
