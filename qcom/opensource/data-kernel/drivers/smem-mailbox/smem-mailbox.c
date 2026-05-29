@@ -18,7 +18,7 @@
 #include <linux/version.h>
 #include <net/genetlink.h>
 
-#include "smem-mailbox.h"
+#include <smem-mailbox.h>
 
 #define SMEM_VERSION 0x00000001 // v0.1
 #define START_COOKIE 0xbeefcafe
