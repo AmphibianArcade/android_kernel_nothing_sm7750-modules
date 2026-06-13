@@ -89,6 +89,12 @@ struct dsi_dfps_capabilities {
 	u32 *dfps_list;
 	u32 dfps_list_len;
 	bool dfps_support;
+	u32 *dfps_hfp_list;
+	u32 *dfps_hbp_list;
+	u32 *dfps_hpw_list;
+	u32 *dfps_vbp_list;
+	u32 *dfps_vfp_list;
+	u32 *dfps_vpw_list;
 };
 
 struct dsi_qsync_capabilities {
@@ -296,6 +302,11 @@ struct dsi_panel {
 	enum dsi_panel_physical_type panel_type;
 
 	struct dsi_panel_ops panel_ops;
+	bool lhbm_state;
+	bool doze_recoverying;
+	int last_refresh_rate;
+
+	int panel_version;
 };
 
 static inline bool dsi_panel_ulps_feature_enabled(struct dsi_panel *panel)
@@ -454,4 +465,7 @@ int dsi_panel_send_cmd(struct dsi_panel *panel,
 
 int dsi_panel_parse_freq_step_table(struct dsi_display_mode *mode,
 				struct dsi_parser_utils *utils);
+
+int dsi_panel_set_lhbm_state(struct dsi_panel *panel, unsigned long fp_status);
+int send_refreshrate_cmd(struct dsi_panel *panel, int refreshrate);
 #endif /* _DSI_PANEL_H_ */

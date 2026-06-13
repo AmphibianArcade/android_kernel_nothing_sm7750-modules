@@ -7993,6 +7993,38 @@ static int sde_encoder_virt_add_phys_encs(
 	return 0;
 }
 
+/**
+ * sde_encoder_get_clones - Calculate the possible_clones for SDE encoder
+ * @sde_enc:        DRM encoder pointer
+ * Returns:         possible_clones mask
+ */
+uint32_t sde_encoder_get_clones(struct drm_encoder *drm_enc)
+{
+	struct drm_encoder *curr;
+	int type = drm_enc->encoder_type;
+	uint32_t clone_mask = drm_encoder_mask(drm_enc);
+
+	/*
+	 * Set writeback as possible clones of real-time DSI encoders and vice
+	 * versa
+	 *
+	 * Writeback encoders can't be clones of each other and DSI
+	 * encoders can't be clones of each other.
+	 *
+	 * TODO: Add DP encoders as valid possible clones for writeback encoders
+	 * (and vice versa) once concurrent writeback has been validated for DP
+	 */
+	drm_for_each_encoder(curr, drm_enc->dev) {
+		if ((type == DRM_MODE_ENCODER_VIRTUAL &&
+				curr->encoder_type != DRM_MODE_ENCODER_VIRTUAL) ||
+				(type != DRM_MODE_ENCODER_VIRTUAL &&
+				curr->encoder_type == DRM_MODE_ENCODER_VIRTUAL))
+			clone_mask |= drm_encoder_mask(curr);
+	}
+
+	return clone_mask;
+}
+
 static int sde_encoder_virt_add_phys_enc_wb(struct sde_encoder_virt *sde_enc,
 		struct sde_enc_phys_init_params *params)
 {
@@ -8428,6 +8460,9 @@ struct drm_encoder *sde_encoder_init_with_ops(struct drm_device *dev,
 	sde_enc->cesta_client = cesta_client;
 	sde_enc->cesta_enable_frame = true;
 	sde_enc->mode_switch = SDE_MODE_SWITCH_NONE;
+
+	init_waitqueue_head(&sde_enc->wait_queue);
+	atomic_set(&sde_enc->vid_wait_vsync_cnt, 0);
 
 	SDE_DEBUG_ENC(sde_enc, "created\n");
 

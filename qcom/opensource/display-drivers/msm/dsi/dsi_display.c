@@ -11,7 +11,8 @@
 #include <linux/version.h>
 #include <linux/ktime.h>
 #include <linux/pinctrl/qcom-pinctrl.h>
-
+#include "sde_encoder.h"
+#include "../sde/sde_connector.h"
 #include "msm_drv.h"
 #include "sde_connector.h"
 #include "msm_mmu.h"
@@ -45,7 +46,7 @@
 
 #define MIPI_DCS_SET_ARP_OFF 0x60
 #define MIPI_DCS_SET_ARP_ON 0x61
-
+extern unsigned long fp_status;
 u8 dbgfs_tx_cmd_buf[SZ_4K];
 static char dsi_display_primary[MAX_CMDLINE_PARAM_LEN];
 static char dsi_display_secondary[MAX_CMDLINE_PARAM_LEN];
@@ -1295,7 +1296,9 @@ int dsi_display_cmd_receive(void *display, const char *cmd_buf,
 		DSI_ERR("[DSI] command packet create failed, rc = %d\n", rc);
 		return rc;
 	}
-
+#if IS_ENABLED(CONFIG_NOTHING_IS_FROGGERPRO)
+	cmd.msg.flags |= MIPI_DSI_MSG_USE_LPM;
+#endif
 	cmd.msg.rx_buf = recv_buf;
 	cmd.msg.rx_len = recv_buf_len;
 	cmd.msg.flags |= MIPI_DSI_MSG_UNICAST_COMMAND;
@@ -1398,20 +1401,50 @@ int dsi_display_set_power(struct drm_connector *connector,
 {
 	struct dsi_display *display = disp;
 	int rc = 0;
+#if IS_ENABLED(CONFIG_NOTHING_IS_FROGGERPRO)
+	unsigned long fp_status_flg = fp_status;
+#endif
 
 	if (!display || !display->panel) {
 		DSI_ERR("invalid display/panel\n");
 		return -EINVAL;
 	}
 
+	if (display->panel->panel_mode == DSI_OP_VIDEO_MODE) {
+		if (power_mode == SDE_MODE_DPMS_LP1) {
+			if (display->dsi_stay_awake == false) {
+				DSI_INFO("dsi display stay awak\n");
+				__pm_stay_awake(display->wk_lock);
+				display->dsi_stay_awake = true;
+			}
+		} else {
+			if ((display->dsi_stay_awake == true) && (!display->panel->doze_recoverying)) {
+				DSI_INFO("dsi display relax\n");
+				__pm_relax(display->wk_lock);
+				display->dsi_stay_awake = false;
+			}
+		}
+	}
+
 	switch (power_mode) {
 	case SDE_MODE_DPMS_LP1:
+#if IS_ENABLED(CONFIG_NOTHING_IS_FROGGERPRO)
+		DSI_INFO("SDE_MODE_DPMS_LP1 enter\n");
+		/*BLEEP-80 add for switch fps begin*/
+		if (display->config.panel_mode == DSI_OP_VIDEO_MODE) {
+			mutex_lock(&display->panel->panel_lock);
+			send_refreshrate_cmd(display->panel, display->panel->cur_mode->timing.refresh_rate);
+			mutex_unlock(&display->panel->panel_lock);
+		}
+		/*BLEEP-80 add for switch fps end*/
+#else
 		if (display->panel->power_mode == SDE_MODE_DPMS_LP2) {
 			if (dsi_display_set_lp2_load(display, false))
 				DSI_WARN("Failed to remove load of lp2 state\n");
 		}
 
 		rc = dsi_panel_set_lp1(display->panel);
+#endif
 		break;
 	case SDE_MODE_DPMS_LP2:
 		rc = dsi_panel_set_lp2(display->panel);
@@ -1420,6 +1453,14 @@ int dsi_display_set_power(struct drm_connector *connector,
 
 		break;
 	case SDE_MODE_DPMS_ON:
+#if IS_ENABLED(CONFIG_NOTHING_IS_FROGGERPRO)
+		DSI_INFO("SDE_MODE_DPMS_ON enter\n");
+		if (display->config.panel_mode == DSI_OP_VIDEO_MODE && !fp_status_flg) {
+			mutex_lock(&display->panel->panel_lock);
+			send_refreshrate_cmd(display->panel, display->panel->cur_mode->timing.refresh_rate);
+			mutex_unlock(&display->panel->panel_lock);
+		}
+#else
 		if (display->panel->power_mode == SDE_MODE_DPMS_LP2) {
 			if (dsi_display_set_lp2_load(display, false))
 				DSI_WARN("Failed to remove load of lp2 state\n");
@@ -1428,9 +1469,13 @@ int dsi_display_set_power(struct drm_connector *connector,
 		if ((display->panel->power_mode == SDE_MODE_DPMS_LP1) ||
 			(display->panel->power_mode == SDE_MODE_DPMS_LP2))
 			rc = dsi_panel_set_nolp(display->panel);
-
+#endif
 		break;
 	case SDE_MODE_DPMS_OFF:
+#if IS_ENABLED(CONFIG_NOTHING_IS_FROGGERPRO)
+		DSI_INFO("SDE_MODE_DPMS_OFF enter\n");
+#endif
+		break;
 	default:
 		return rc;
 	}
@@ -4414,6 +4459,9 @@ static int dsi_display_res_init(struct dsi_display *display)
 		goto error_panel_put;
 	}
 
+	display->wk_lock = wakeup_source_register(&display->pdev->dev, "dsi_wakelock");
+	display->dsi_stay_awake = false;
+
 	/**
 	 * In trusted vm, the connectors will not be enabled
 	 * until the HW resources are assigned and accepted.
@@ -4511,21 +4559,24 @@ static bool dsi_display_is_seamless_dfps_possible(
 		DSI_DEBUG("timing.h_back_porch differs %d %d\n",
 				cur->timing.h_back_porch,
 				tgt->timing.h_back_porch);
-		return false;
+		if (dfps_type != DSI_DFPS_IMMEDIATE_HV_P)
+			return false;
 	}
 
 	if (cur->timing.h_sync_width != tgt->timing.h_sync_width) {
 		DSI_DEBUG("timing.h_sync_width differs %d %d\n",
 				cur->timing.h_sync_width,
 				tgt->timing.h_sync_width);
-		return false;
+		if (dfps_type != DSI_DFPS_IMMEDIATE_HV_P)
+			return false;
 	}
 
 	if (cur->timing.h_front_porch != tgt->timing.h_front_porch) {
 		DSI_DEBUG("timing.h_front_porch differs %d %d\n",
 				cur->timing.h_front_porch,
 				tgt->timing.h_front_porch);
-		if (dfps_type != DSI_DFPS_IMMEDIATE_HFP)
+		if ((dfps_type != DSI_DFPS_IMMEDIATE_HFP) && (dfps_type != DSI_DFPS_IMMEDIATE_HV_P))
+		//if (dfps_type != DSI_DFPS_IMMEDIATE_HFP)
 			return false;
 	}
 
@@ -4549,21 +4600,24 @@ static bool dsi_display_is_seamless_dfps_possible(
 		DSI_DEBUG("timing.v_back_porch differs %d %d\n",
 				cur->timing.v_back_porch,
 				tgt->timing.v_back_porch);
-		return false;
+		if (dfps_type != DSI_DFPS_IMMEDIATE_HV_P)
+			return false;
 	}
 
 	if (cur->timing.v_sync_width != tgt->timing.v_sync_width) {
 		DSI_DEBUG("timing.v_sync_width differs %d %d\n",
 				cur->timing.v_sync_width,
 				tgt->timing.v_sync_width);
-		return false;
+		if (dfps_type != DSI_DFPS_IMMEDIATE_HV_P)
+			return false;
 	}
 
 	if (cur->timing.v_front_porch != tgt->timing.v_front_porch) {
 		DSI_DEBUG("timing.v_front_porch differs %d %d\n",
 				cur->timing.v_front_porch,
 				tgt->timing.v_front_porch);
-		if (dfps_type != DSI_DFPS_IMMEDIATE_VFP)
+		if ((dfps_type != DSI_DFPS_IMMEDIATE_VFP) && (dfps_type != DSI_DFPS_IMMEDIATE_HV_P))
+		//if (dfps_type != DSI_DFPS_IMMEDIATE_VFP)
 			return false;
 	}
 
@@ -5176,9 +5230,15 @@ static int dsi_display_dfps_calc_front_porch(
  *                      display->panel->cur_mode.
  * Return: error code.
  */
+#if IS_ENABLED(CONFIG_NOTHING_IS_FROGGERPRO)
+static int dsi_display_get_dfps_timing(struct dsi_display *display,
+			struct dsi_display_mode *adj_mode,
+				u32 curr_refresh_rate, int i)
+#else
 static int dsi_display_get_dfps_timing(struct dsi_display *display,
 			struct dsi_display_mode *adj_mode,
 				u32 curr_refresh_rate)
+#endif
 {
 	struct dsi_dfps_capabilities dfps_caps;
 	struct dsi_display_mode per_ctrl_mode;
@@ -5247,7 +5307,27 @@ static int dsi_display_get_dfps_timing(struct dsi_display *display,
 		if (!rc)
 			adj_mode->timing.h_front_porch *= display->ctrl_count;
 		break;
-
+#if IS_ENABLED(CONFIG_NOTHING_IS_FROGGERPRO)
+	case DSI_DFPS_IMMEDIATE_HV_P:
+		if (i < 0)
+			break;
+		if (!dfps_caps.dfps_hfp_list) {
+			DSI_ERR("dfps_caps.dfps_hfp_list is null ptr!");
+			break;
+		}
+		adj_mode->timing.h_front_porch = dfps_caps.dfps_hfp_list[i] *= display->ctrl_count;
+		adj_mode->timing.h_back_porch = dfps_caps.dfps_hbp_list[i] *= display->ctrl_count;
+		adj_mode->timing.h_sync_width = dfps_caps.dfps_hpw_list[i] *= display->ctrl_count;
+		adj_mode->timing.v_back_porch = dfps_caps.dfps_vbp_list[i];
+		adj_mode->timing.v_front_porch = dfps_caps.dfps_vfp_list[i];
+		adj_mode->timing.v_sync_width = dfps_caps.dfps_vpw_list[i];
+		SDE_EVT32(SDE_EVTLOG_FUNC_CASE3, DSI_DFPS_IMMEDIATE_HV_P,
+			curr_refresh_rate, timing->refresh_rate);
+		SDE_EVT32(adj_mode->timing.h_front_porch, adj_mode->timing.h_back_porch,
+			adj_mode->timing.h_sync_width, adj_mode->timing.v_back_porch,
+			adj_mode->timing.v_front_porch, adj_mode->timing.v_sync_width);
+		break;
+#endif
 	default:
 		DSI_ERR("Unsupported DFPS mode %d\n", dfps_caps.type);
 		rc = -ENOTSUPP;
@@ -5267,7 +5347,11 @@ static bool dsi_display_validate_mode_seamless(struct dsi_display *display,
 	}
 
 	/* Currently the only seamless transition is dynamic fps */
+#if IS_ENABLED(CONFIG_NOTHING_IS_FROGGERPRO)
+	rc = dsi_display_get_dfps_timing(display, adj_mode, 0, -1);
+#else
 	rc = dsi_display_get_dfps_timing(display, adj_mode, 0);
+#endif
 	if (rc) {
 		DSI_DEBUG("Dynamic FPS not supported for seamless\n");
 	} else {
@@ -7569,12 +7653,21 @@ int dsi_display_get_modes_helper(struct dsi_display *display,
 				sub_mode->timing.avr_step_fps = avr_caps->avr_step_fps_list[i];
 				sub_mode->priv_info->avr_step_fps = sub_mode->timing.avr_step_fps;
 			}
-
+#if IS_ENABLED(CONFIG_NOTHING_IS_FROGGERPRO)
+			dsi_display_get_dfps_timing(display, sub_mode,
+                                        curr_refresh_rate, i);
+#else
 			dsi_display_get_dfps_timing(display, sub_mode,
 					curr_refresh_rate);
+#endif
 			dsi_panel_get_fps_switch_cmd(display->panel, sub_mode,
 					sub_mode->timing.refresh_rate);
+#if IS_ENABLED(CONFIG_NOTHING_IS_FROGGERPRO)
+			if ((i != start) && support_cmd_mode && support_video_mode)
+				sub_mode->panel_mode_caps = DSI_OP_VIDEO_MODE;
+#else
 			sub_mode->panel_mode_caps = DSI_OP_VIDEO_MODE;
+#endif
 		}
 		end = array_idx;
 
@@ -8215,7 +8308,16 @@ error:
 	mutex_unlock(&display->display_lock);
 	return rc;
 }
+int dsi_display_set_lhbm_state(struct dsi_display *display, unsigned long fp_status)
+{
+	if (!display) {
+		DSI_ERR("Invalid params\n");
+		return -EINVAL;
+	}
+	dsi_panel_set_lhbm_state(display->panel, fp_status);
 
+	return 0;
+}
 int dsi_display_set_mode(struct dsi_display *display,
 			 struct dsi_display_mode *mode,
 			 u32 flags)
@@ -8223,11 +8325,26 @@ int dsi_display_set_mode(struct dsi_display *display,
 	int rc = 0;
 	struct dsi_display_mode adj_mode;
 	struct dsi_mode_info timing;
-
+#if IS_ENABLED(CONFIG_NOTHING_IS_FROGGERPRO)
+	struct drm_encoder *encoder = NULL;
+	struct sde_encoder_virt *sde_enc = NULL;
+	ktime_t last_vsync = 0;
+	u64 diff_us = 0;
+	u32 pre_fps = 0, period_us, sleep_us = 0;
+#endif
 	if (!display || !mode || !display->panel) {
 		DSI_ERR("Invalid params\n");
 		return -EINVAL;
 	}
+
+#if IS_ENABLED(CONFIG_NOTHING_IS_FROGGERPRO)
+	/* add for esd check not use when aod */
+	if ((mode->timing.refresh_rate == 30) &&
+			(display->drm_conn)) {
+		sde_connector_schedule_status_work(display->drm_conn, false);
+		display->panel->esd_config.esd_enabled = false;
+	}
+#endif
 
 	mutex_lock(&display->display_lock);
 
@@ -8243,7 +8360,15 @@ int dsi_display_set_mode(struct dsi_display *display,
 			goto error;
 		}
 	}
-
+	if (display->panel->lhbm_state && mode->timing.refresh_rate != 120) {
+		fp_status = 0;
+		dsi_display_set_lhbm_state(display, 0);
+	}
+#if IS_ENABLED(CONFIG_NOTHING_IS_FROGGERPRO)
+	if (display->panel->cur_mode) {
+		pre_fps = display->panel->cur_mode->timing.refresh_rate;
+	}
+#endif
 	rc = dsi_display_restore_bit_clk(display, &adj_mode);
 	if (rc) {
 		DSI_ERR("[%s] bit clk rate cannot be restored\n", display->name);
@@ -8273,6 +8398,40 @@ int dsi_display_set_mode(struct dsi_display *display,
 	memcpy(display->panel->cur_mode, &adj_mode, sizeof(adj_mode));
 error:
 	mutex_unlock(&display->display_lock);
+#if IS_ENABLED(CONFIG_NOTHING_IS_FROGGERPRO)
+	if (display->panel->panel_initialized) {
+		mutex_lock(&display->panel->panel_lock);
+		encoder = display->bridge->base.encoder;
+		if ((encoder != NULL) && (pre_fps != 0)) {
+			sde_enc = to_sde_encoder_virt(encoder);
+			if (sde_encoder_get_vblank_timestamp(encoder, &last_vsync)) {
+				diff_us = DIV_ROUND_UP((ktime_get() - last_vsync), 1000);
+				period_us = DIV_ROUND_UP(1000000 ,pre_fps);
+				if (diff_us > period_us) {
+					display->send_fps_cmd_pending = true;
+					display->wait_timeout_us = period_us + 2500;
+					atomic_set(&sde_enc->vid_wait_vsync_cnt, 1);
+					mutex_unlock(&display->panel->panel_lock);
+					return rc;
+				} else if (diff_us > 0 && diff_us < period_us && diff_us > period_us/3) {
+					sleep_us = period_us - diff_us;
+					//DSI_INFO("diff_us=%llu, period_us=%d, sleep_us=%d\n", diff_us, period_us, sleep_us);
+					usleep_range(sleep_us, sleep_us + 20);
+				}
+			}
+		}
+		display->queue_cmd_waits = true;
+		send_refreshrate_cmd(display->panel, timing.refresh_rate);
+		display->queue_cmd_waits = false;
+		mutex_unlock(&display->panel->panel_lock);
+	}
+
+	/* add for esd check not use when aod */
+	if (timing.refresh_rate != 30 && pre_fps == 30 && display->drm_conn) {
+		display->panel->esd_config.esd_enabled = true;
+		sde_connector_schedule_status_work(display->drm_conn, true);
+	}
+#endif
 	return rc;
 }
 
@@ -9092,7 +9251,10 @@ int dsi_display_pre_kickoff(struct drm_connector *connector,
 	struct dsi_display_mode *mode;
 	int rc = 0, ret = 0;
 	int i;
-
+#if IS_ENABLED(CONFIG_NOTHING_IS_FROGGERPRO)
+	struct drm_encoder *drm_enc = NULL;
+	struct sde_encoder_virt *sde_enc = NULL;
+#endif
 	mode = display->panel->cur_mode;
 
 	/* check and setup MISR */
@@ -9153,7 +9315,28 @@ wait_failure:
 
 	if (!ret)
 		rc = dsi_display_set_roi(display, params->rois);
+#if IS_ENABLED(CONFIG_NOTHING_IS_FROGGERPRO)
+	drm_enc = display->bridge->base.encoder;
+	if (display->send_fps_cmd_pending && drm_enc != NULL) {
+		sde_enc = to_sde_encoder_virt(drm_enc);
+		if (atomic_read(&sde_enc->vid_wait_vsync_cnt) > 0) {
+			ret = wait_event_timeout(sde_enc->wait_queue,
+				atomic_read(&sde_enc->vid_wait_vsync_cnt) < 1,
+				usecs_to_jiffies(display->wait_timeout_us));
+			if (ret == 0) {
+				DSI_INFO("wait vsync timeout\n");
+			}
+		}
+		mutex_lock(&display->panel->panel_lock);
+		display->queue_cmd_waits = true;
+		send_refreshrate_cmd(display->panel, mode->timing.refresh_rate);
+		display->queue_cmd_waits = false;
+		mutex_unlock(&display->panel->panel_lock);
 
+		display->send_fps_cmd_pending = false;
+		display->wait_timeout_us = 0;
+	}
+#endif
 	return rc;
 }
 

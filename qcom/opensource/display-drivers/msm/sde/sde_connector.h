@@ -787,6 +787,8 @@ struct sde_connector {
 	u32 max_mode_width;
 	bool shared;
 	bool is_lb_conn;
+
+	struct delayed_work set_brightness_work;
 };
 
 /**
@@ -1598,5 +1600,6 @@ static inline void sde_connector_backlight_lock(struct sde_connector *c_conn, bo
 	else
 		mutex_unlock(&c_conn->bl_vrr.bl_lock);
 }
-
+ssize_t nt_tx_cmd(struct sde_connector *c_conn, const char *buf, size_t count);
+ssize_t nt_rx_cmd(struct sde_connector *c_conn, const char *buf, size_t count);
 #endif /* _SDE_CONNECTOR_H_ */
