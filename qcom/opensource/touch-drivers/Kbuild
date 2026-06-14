@@ -134,21 +134,43 @@ ifeq ($(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX), y)
 endif
 
 ifeq ($(CONFIG_TOUCH_FOCALTECH), y)
-	LINUX_INC += -include $(TOUCH_ROOT)/focaltech_touch/focaltech_common.h
-	LINUX_INC += -include $(TOUCH_ROOT)/focaltech_touch/focaltech_config.h
-	LINUX_INC += -include $(TOUCH_ROOT)/focaltech_touch/focaltech_core.h
-	LINUX_INC += -include $(TOUCH_ROOT)/focaltech_touch/focaltech_flash.h
 
-	focaltech_fts-y := \
-		 ./focaltech_touch/focaltech_core.o \
-		 ./focaltech_touch/focaltech_ex_fun.o \
-		 ./focaltech_touch/focaltech_ex_mode.o \
-		 ./focaltech_touch/focaltech_gesture.o \
-		 ./focaltech_touch/focaltech_esdcheck.o \
-		 ./focaltech_touch/focaltech_point_report_check.o \
-		 ./focaltech_touch/focaltech_i2c.o \
-		 ./focaltech_touch/focaltech_flash.o \
-		 ./focaltech_touch/focaltech_flash/focaltech_upgrade_ft3518.o
+ifeq ($(CONFIG_NOTHING_IS_FROGGERPRO), y)
+	CONFIG_TOUCHSCREEN_FTS_DIRECTORY := focaltech_tp
+else
+	CONFIG_TOUCHSCREEN_FTS_DIRECTORY := focaltech_touch
+endif
+	
+	LINUX_INC += -include $(TOUCH_ROOT)/$(CONFIG_TOUCHSCREEN_FTS_DIRECTORY)/focaltech_common.h
+	LINUX_INC += -include $(TOUCH_ROOT)/$(CONFIG_TOUCHSCREEN_FTS_DIRECTORY)focaltech_config.h
+	LINUX_INC += -include $(TOUCH_ROOT)/$(CONFIG_TOUCHSCREEN_FTS_DIRECTORY)/focaltech_core.h
+	LINUX_INC += -include $(TOUCH_ROOT)/$(CONFIG_TOUCHSCREEN_FTS_DIRECTORY)/focaltech_flash.h
+
+	focaltech_fts-y += \
+		 ./$(CONFIG_TOUCHSCREEN_FTS_DIRECTORY)/focaltech_core.o \
+		 ./$(CONFIG_TOUCHSCREEN_FTS_DIRECTORY)/focaltech_ex_fun.o \
+		 ./$(CONFIG_TOUCHSCREEN_FTS_DIRECTORY)/focaltech_ex_mode.o \
+		 ./$(CONFIG_TOUCHSCREEN_FTS_DIRECTORY)/focaltech_gesture.o \
+		 ./$(CONFIG_TOUCHSCREEN_FTS_DIRECTORY)/focaltech_esdcheck.o \
+		 ./$(CONFIG_TOUCHSCREEN_FTS_DIRECTORY)/focaltech_point_report_check.o \
+		 ./$(CONFIG_TOUCHSCREEN_FTS_DIRECTORY)/focaltech_flash.o \
+
+ifeq ($(CONFIG_NOTHING_IS_FROGGERPRO), y)
+
+	focaltech_fts-y += \
+		 ./$(CONFIG_TOUCHSCREEN_FTS_DIRECTORY)/focaltech_hp.o \
+		 ./$(CONFIG_TOUCHSCREEN_FTS_DIRECTORY)/focaltech_debug.o \
+		 ./$(CONFIG_TOUCHSCREEN_FTS_DIRECTORY)/focaltech_test/focaltech_test.o \
+		 ./$(CONFIG_TOUCHSCREEN_FTS_DIRECTORY)/focaltech_test/focaltech_test_ini.o \
+		 ./$(CONFIG_TOUCHSCREEN_FTS_DIRECTORY)/focaltech_test/supported_ic/focaltech_test_ft3683g.o \
+		 ./$(CONFIG_TOUCHSCREEN_FTS_DIRECTORY)/focaltech_proximity.o \
+		 ./$(CONFIG_TOUCHSCREEN_FTS_DIRECTORY)/focaltech_spi_v2.o \
+		 ./$(CONFIG_TOUCHSCREEN_FTS_DIRECTORY)/focaltech_flash/focaltech_upgrade_ft3683g.o	
+else 
+	focaltech_fts-y += \
+		./$(CONFIG_TOUCHSCREEN_FTS_DIRECTORY)/focaltech_flash/focaltech_upgrade_ft3518.o \
+		./$(CONFIG_TOUCHSCREEN_FTS_DIRECTORY)/focaltech_i2c.o
+endif
 
 	obj-$(CONFIG_MSM_TOUCH) += focaltech_fts.o
 endif
