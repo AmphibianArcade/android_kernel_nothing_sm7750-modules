@@ -1172,6 +1172,7 @@ int dsi_connector_get_modes(struct drm_connector *connector, void *data,
 {
 	int rc, i;
 	u32 count = 0, edid_size;
+	u32 skip_count = 0;
 	struct dsi_display_mode *modes = NULL;
 	struct drm_display_mode drm_mode;
 	struct dsi_display *display = data;
@@ -1208,6 +1209,14 @@ int dsi_connector_get_modes(struct drm_connector *connector, void *data,
 		struct drm_display_mode *m;
 
 		memset(&drm_mode, 0x0, sizeof(drm_mode));
+
+		if (modes[i].timing.refresh_rate < 60) {
+        DSI_INFO("Skipping %uHz mode\n",
+                 modes[i].timing.refresh_rate);
+				 skip_count++;
+        continue;
+    	}
+
 		dsi_convert_to_drm_mode(&modes[i], &drm_mode);
 		m = drm_mode_duplicate(connector->dev, &drm_mode);
 		if (!m) {
@@ -1240,7 +1249,7 @@ int dsi_connector_get_modes(struct drm_connector *connector, void *data,
 	edid.width_cm = (connector->display_info.width_mm) / 10;
 	edid.height_cm = (connector->display_info.height_mm) / 10;
 
-	dsi_drm_update_dtd(&edid, modes, count);
+	dsi_drm_update_dtd(&edid, modes, (count - skip_count));
 	dsi_drm_update_checksum(&edid);
 	rc =  drm_connector_update_edid_property(connector, &edid);
 	if (rc)
@@ -1254,8 +1263,8 @@ int dsi_connector_get_modes(struct drm_connector *connector, void *data,
 	connector->display_info.width_mm = width_mm;
 	connector->display_info.height_mm = height_mm;
 end:
-	DSI_DEBUG("MODE COUNT =%d\n\n", count);
-	return count;
+	DSI_DEBUG("MODE COUNT =%d\n\n", (count - skip_count));
+	return (count - skip_count);
 }
 
 enum drm_mode_status dsi_conn_mode_valid(struct drm_connector *connector,
