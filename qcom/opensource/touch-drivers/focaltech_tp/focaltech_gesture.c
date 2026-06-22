@@ -51,7 +51,6 @@
 #define KEY_GESTURE_V                           KEY_V
 #define KEY_GESTURE_C                           KEY_C
 #define KEY_GESTURE_Z                           KEY_Z
-#define KEY_GESTURE_FOD                         249
 #define KEY_PALM_TO_SLEEP                       252
 
 #define GESTURE_LEFT                            0x20
@@ -296,21 +295,15 @@ void fts_fod_report_key(struct fts_ts_data *ts_data)
 
     if ((ts_data->fod_fp_down) && (!ts_data->fp_down_report)) {
         ts_data->fp_down_report = 1;
-        input_report_key(ts_data->input_dev, KEY_GESTURE_FOD, 1);
-        input_sync(ts_data->input_dev);
         coordinate.x = ts_data->fp_x;
         coordinate.y = ts_data->fp_y;
-        FTS_DEBUG("KEY_GESTURE_FOD, 1. x:%d, y:%d\n", coordinate.x, coordinate.y);
         touchpanel_event_call_notifier(TOUCHPANEL_EVENT_NOTIFIER_EVENT_FINGER_DOWN,
                                        (void *)&coordinate);
     }
     else if ((!ts_data->fod_fp_down) && (ts_data->fp_down_report)) {
         ts_data->fp_down_report = 0;
-        input_report_key(ts_data->input_dev, KEY_GESTURE_FOD, 0);
-        input_sync(ts_data->input_dev);
         coordinate.x = ts_data->fp_x;
         coordinate.y = ts_data->fp_y;
-        FTS_DEBUG("KEY_GESTURE_FOD, 0. x:%d, y:%d\n", coordinate.x, coordinate.y);
         touchpanel_event_call_notifier(TOUCHPANEL_EVENT_NOTIFIER_EVENT_FINGER_UP,
                                        (void *)&coordinate);
         if (ts_data->fod_mode == FTS_FOD_UNLOCK) {
@@ -558,7 +551,6 @@ int fts_gesture_init(struct fts_ts_data *ts_data)
     input_set_capability(input_dev, EV_KEY, KEY_GESTURE_V);
     input_set_capability(input_dev, EV_KEY, KEY_GESTURE_Z);
     input_set_capability(input_dev, EV_KEY, KEY_GESTURE_C);
-    input_set_capability(input_dev, EV_KEY, KEY_GESTURE_FOD);
     input_set_capability(input_dev, EV_KEY, KEY_PALM_TO_SLEEP);
 
     __set_bit(KEY_GESTURE_RIGHT, input_dev->keybit);
@@ -575,7 +567,6 @@ int fts_gesture_init(struct fts_ts_data *ts_data)
     __set_bit(KEY_GESTURE_V, input_dev->keybit);
     __set_bit(KEY_GESTURE_C, input_dev->keybit);
     __set_bit(KEY_GESTURE_Z, input_dev->keybit);
-    __set_bit(KEY_GESTURE_FOD, input_dev->keybit);
     __set_bit(KEY_PALM_TO_SLEEP, input_dev->keybit);
 
     fts_create_gesture_sysfs(ts_data->dev);
