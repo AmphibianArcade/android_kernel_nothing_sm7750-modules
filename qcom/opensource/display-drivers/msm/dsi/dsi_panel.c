@@ -818,6 +818,9 @@ int dsi_panel_set_lhbm_state(struct dsi_panel *panel, unsigned long fp_status)
 			panel->lhbm_state = false;
 			update = true;
 			DSI_INFO("close local hbm");
+			if (!rc) {
+				send_refreshrate_cmd(panel, panel->cur_mode->timing.refresh_rate);
+			}
 			if (rc)
 				DSI_ERR("[%s] failed to send DSI_CMD_SET_LHBM_OFF cmd, rc=%d\n", panel->name, rc);
 		}
