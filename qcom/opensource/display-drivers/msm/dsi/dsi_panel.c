@@ -20,6 +20,7 @@
 #include "sde_vdc_helper.h"
 #include "sde_hw_catalog.h"
 #include <linux/soc/qcom/nt_display_notifier.h>
+#include <linux/soc/qcom/touchpanel_event_notify.h>
 #include "sde_trace.h"
 /**
  * topology is currently defined by a set of following 3 values:
@@ -41,6 +42,8 @@
 #define MIN_PREFILL_LINES      40
 #define RSCC_MODE_THRESHOLD_TIME_US 40
 #define DCS_COMMAND_THRESHOLD_TIME_US 40
+
+extern unsigned long fp_status;
 
 static void dsi_dce_prepare_pps_header(char *buf, u32 pps_delay_ms)
 {
@@ -770,6 +773,24 @@ static u32 dsi_panel_get_brightness(struct dsi_backlight_config *bl)
 	DSI_DEBUG("cur_bl_level=%d\n", cur_bl_level);
 	return cur_bl_level;
 }
+
+static int dsi_panel_fod_tp_notifier_cb(struct notifier_block *nb,
+                                         unsigned long event, void *data)
+{
+
+    DSI_INFO("FOD TP event: %lu\n", event);
+
+    switch (event) {
+    case TOUCHPANEL_EVENT_NOTIFIER_EVENT_FINGER_DOWN:
+        fp_status = 1;
+        break;
+    case TOUCHPANEL_EVENT_NOTIFIER_EVENT_FINGER_UP:
+        fp_status = 0;
+        break;
+    }
+    return NOTIFY_OK;
+}
+
 int dsi_panel_set_lhbm_state(struct dsi_panel *panel, unsigned long fp_status)
 {
 	int rc = 0;
@@ -4381,6 +4402,16 @@ struct dsi_panel *dsi_panel_get(struct device *parent,
 
 	mutex_init(&panel->panel_lock);
 
+	panel->fod_tp_nb.notifier_call = dsi_panel_fod_tp_notifier_cb;
+	rc = touchpanel_event_register_client(&panel->fod_tp_nb);
+	if (rc) {
+		DSI_WARN("failed to register FOD TP notifier: %d\n", rc);
+		panel->fod_nb_registered = false;
+	} else {
+		panel->fod_nb_registered = true;
+		DSI_INFO("FOD TP notifier registered\n");
+	}
+
 	return panel;
 error:
 	kfree(new_panel_name);
@@ -4490,6 +4521,9 @@ int dsi_panel_drv_deinit(struct dsi_panel *panel)
 
 	panel->host = NULL;
 	memset(&panel->mipi_device, 0x0, sizeof(panel->mipi_device));
+
+	if (panel->fod_nb_registered)
+    	touchpanel_event_unregister_client(&panel->fod_tp_nb);
 
 	mutex_unlock(&panel->panel_lock);
 	return rc;

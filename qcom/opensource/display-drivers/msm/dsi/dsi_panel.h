@@ -307,6 +307,9 @@ struct dsi_panel {
 	int last_refresh_rate;
 
 	int panel_version;
+	
+	struct notifier_block fod_tp_nb;
+	bool fod_nb_registered;
 };
 
 static inline bool dsi_panel_ulps_feature_enabled(struct dsi_panel *panel)
