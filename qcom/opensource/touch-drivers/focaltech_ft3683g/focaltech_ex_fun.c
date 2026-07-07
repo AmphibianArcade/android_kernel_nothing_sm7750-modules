@@ -1174,6 +1174,9 @@ static ssize_t fts_fod_store(
 {
     struct fts_ts_data *ts_data = dev_get_drvdata(dev);
 
+    if (ts_data->fts_fod_enabled)
+        return count;
+
     mutex_lock(&ts_data->input_dev->mutex);
     if (FTS_SYSFS_ECHO_ON(buf)) {
         fts_fod_enable(FTS_FOD_ENABLE);
@@ -1190,6 +1193,55 @@ static ssize_t fts_fod_store(
 
     return count;
 }
+
+static ssize_t fts_fod_enabled_show(struct device *dev,
+                                    struct device_attribute *attr, char *buf)
+{
+    struct fts_ts_data *ts_data = dev_get_drvdata(dev);
+
+    if (!ts_data)
+        return -ENODEV;
+
+    return scnprintf(buf, PAGE_SIZE, "%d\n", ts_data->fts_fod_enabled ? 1 : 0);
+}
+
+static ssize_t fts_fod_enabled_store(struct device *dev,
+                                     struct device_attribute *attr,
+                                     const char *buf, size_t count)
+{
+    struct fts_ts_data *ts_data = dev_get_drvdata(dev);
+    unsigned long val;
+    int error;
+
+    if (!ts_data)
+        return -ENODEV;
+
+    error = kstrtoul(buf, 0, &val);
+    if (error)
+        return error;
+
+    if (val != 0 && val != 1)
+        return -EINVAL;
+
+    if (val)
+        fts_fod_enable(FTS_FOD_ENABLE);
+
+    ts_data->fts_fod_enabled = val ? true : false;
+
+    return count;
+}
+
+static ssize_t fts_fod_pressed_show(struct device *dev,
+                                    struct device_attribute *attr, char *buf)
+{
+    struct fts_ts_data *ts_data = dev_get_drvdata(dev);
+
+    if (!ts_data)
+        return -ENODEV;
+
+    return scnprintf(buf, PAGE_SIZE, "%d\n", ts_data->fod_fp_down ? 1 : 0);
+}
+
 #endif
 
 /* get the fw version  example:cat fw_version */
@@ -1224,6 +1276,8 @@ static DEVICE_ATTR(fts_touch_size, S_IRUGO | S_IWUSR, fts_touchsize_show, fts_to
 static DEVICE_ATTR(fts_ta_mode, S_IRUGO | S_IWUSR, fts_tamode_show, fts_tamode_store);
 #if FTS_FOD_EN
 static DEVICE_ATTR(fts_fod_mode, S_IRUGO | S_IWUSR, fts_fod_show, fts_fod_store);
+static DEVICE_ATTR_RW(fts_fod_enabled);
+static DEVICE_ATTR_RO(fts_fod_pressed);
 #endif
 
 /* add your attr in here*/
@@ -1244,6 +1298,8 @@ static struct attribute *fts_attributes[] = {
     &dev_attr_fts_ta_mode.attr,
 #if FTS_FOD_EN
     &dev_attr_fts_fod_mode.attr,
+    &dev_attr_fts_fod_enabled.attr,
+    &dev_attr_fts_fod_pressed.attr,
 #endif
     NULL
 };

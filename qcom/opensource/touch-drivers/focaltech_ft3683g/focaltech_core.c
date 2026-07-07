@@ -35,6 +35,7 @@
 #include <linux/of_device.h>
 #include <linux/of_gpio.h>
 #include <linux/of_irq.h>
+#include <linux/sysfs.h>
 
 #if IS_ENABLED(CONFIG_DRM)
 #if IS_ENABLED(CONFIG_DRM_PANEL)
@@ -568,6 +569,7 @@ int fts_fod_readdata(struct fts_ts_data *ts_data)
         if (fod_down) {
             /* FOD down, need do something to tell host */
             ts_data->fod_fp_down = true;
+            sysfs_notify(&ts_data->dev->kobj, NULL, "fts_fod_pressed");
         } else {
             /* FOD up, need do something to tell host */
             ts_data->fod_fp_down = false;
