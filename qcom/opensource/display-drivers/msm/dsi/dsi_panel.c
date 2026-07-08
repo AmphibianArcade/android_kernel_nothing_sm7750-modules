@@ -697,32 +697,6 @@ int dsi_panel_set_backlight(struct dsi_panel *panel, u32 bl_lvl)
 
 	if (panel->host_config.ext_bridge_mode)
 		return 0;
-#if IS_ENABLED(CONFIG_NOTHING_IS_FROGGERPRO)
-	if (30 == panel->cur_mode->timing.refresh_rate) {
-		if (bl_lvl >= 3500) {
-			bl_lvl = 16380;
-		} else if (bl_lvl >= 2500) {
-			bl_lvl = 7449;
-		} else {
-			bl_lvl = 4;
-		}
-		DSI_INFO("recovery brightness  %d to aod_level %d\n",
-			panel->bl_config.brightness, bl_lvl);
-	}
-#else
-	if ((panel->power_mode == SDE_MODE_DPMS_LP1) ||
-		(panel->power_mode == SDE_MODE_DPMS_LP2)) {
-		if (bl_lvl >= 1000) {
-			bl_lvl = 4095;
-		} else if (bl_lvl >= 600) {
-			bl_lvl = 2862;
-		} else {
-			bl_lvl = 16;
-		}
-		DSI_INFO("recovery brightness  %d to aod_level %d\n",
-			panel->bl_config.brightness, bl_lvl);
-	}
-#endif
 
 	DSI_DEBUG("backlight type:%d lvl:%d\n", bl->type, bl_lvl);
 	switch (bl->type) {
@@ -5179,13 +5153,11 @@ error:
 int dsi_panel_set_lp1(struct dsi_panel *panel)
 {
 	int rc = 0;
-	int brightness;
 
 	if (!panel) {
 		DSI_ERR("invalid params\n");
 		return -EINVAL;
 	}
-	DSI_INFO("mode in\n");
 
 	dsi_panel_set_lhbm_state(panel, 0);
 	mutex_lock(&panel->panel_lock);
@@ -5203,16 +5175,6 @@ int dsi_panel_set_lp1(struct dsi_panel *panel)
 		panel->power_mode != SDE_MODE_DPMS_LP2)
 		dsi_pwr_panel_regulator_mode_set(&panel->power_info,
 			"ibb", REGULATOR_MODE_IDLE);
-	brightness = panel->bl_config.brightness;
-	if (brightness >= 1000) {
-		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_AOD1, false);
-	} else if (brightness >= 600) {
-		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_AOD2, false);
-	} else {
-		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_AOD3, false);
-	}
-	DSI_INFO("enter aod, brightness  %d, rc=%d\n",
-		    panel->bl_config.brightness,  rc);
 
 exit:
 	mutex_unlock(&panel->panel_lock);
@@ -5267,7 +5229,6 @@ exit:
 int dsi_panel_set_nolp(struct dsi_panel *panel)
 {
 	int rc = 0;
-	int brightness;
 
 	if (!panel) {
 		DSI_ERR("invalid params\n");
@@ -5286,10 +5247,6 @@ int dsi_panel_set_nolp(struct dsi_panel *panel)
 	     panel->power_mode == SDE_MODE_DPMS_LP2))
 		dsi_pwr_panel_regulator_mode_set(&panel->power_info,
 			"ibb", REGULATOR_MODE_NORMAL);
-	brightness = panel->bl_config.brightness;
-	rc = dsi_panel_update_backlight(panel, brightness);
-	DSI_INFO("[%s] recovery aod_level to normal %d, rc=%d\n",
-		panel->name, panel->bl_config.brightness, rc);
 	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_NOLP, false);
 	if (rc)
 		DSI_ERR("[%s] failed to send DSI_CMD_SET_NOLP cmd, rc=%d\n",
