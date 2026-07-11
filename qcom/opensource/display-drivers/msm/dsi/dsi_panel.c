@@ -5673,6 +5673,11 @@ int send_refreshrate_cmd(struct dsi_panel *panel, int refreshrate)
 		}
 	}
 
+	if (fp_status) {
+		DSI_ERR("[%s] FOD active, lock refresh rate \n", panel->name);
+		goto error;
+	}
+
 	switch(refreshrate)
 	{
 		case 144:
