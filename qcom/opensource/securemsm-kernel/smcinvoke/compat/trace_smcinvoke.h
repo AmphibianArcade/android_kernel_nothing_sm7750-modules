@@ -491,7 +491,7 @@ TRACE_EVENT(smcinvoke_release,
  */
 #ifndef SMCINVOKE_TRACE_INCLUDE_PATH
 #define SMCINVOKE_TRACE_INCLUDE_PATH \
-	../../../sm7750-modules/qcom/opensource/securemsm-kernel/smcinvoke/compat
+	../../../sm8750-modules/qcom/opensource/securemsm-kernel/smcinvoke/compat
 #endif
 
 #undef TRACE_INCLUDE_PATH
