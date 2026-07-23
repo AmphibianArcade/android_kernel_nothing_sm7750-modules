@@ -135,7 +135,7 @@ endif
 
 ifeq ($(CONFIG_TOUCH_FOCALTECH), y)
 
-ifeq ($(CONFIG_NOTHING_IS_FROGGERPRO), y)
+ifneq ($(filter y,$(CONFIG_NOTHING_IS_FROGGERPRO) $(CONFIG_NOTHING_IS_METROID)),)
 	CONFIG_TOUCHSCREEN_FTS_DIRECTORY := focaltech_ft3683g
 else
 	CONFIG_TOUCHSCREEN_FTS_DIRECTORY := focaltech_touch
@@ -155,7 +155,7 @@ endif
 		 ./$(CONFIG_TOUCHSCREEN_FTS_DIRECTORY)/focaltech_point_report_check.o \
 		 ./$(CONFIG_TOUCHSCREEN_FTS_DIRECTORY)/focaltech_flash.o \
 
-ifeq ($(CONFIG_NOTHING_IS_FROGGERPRO), y)
+ifneq ($(filter y,$(CONFIG_NOTHING_IS_FROGGERPRO) $(CONFIG_NOTHING_IS_METROID)),)
 
 	focaltech_fts-y += \
 		 ./$(CONFIG_TOUCHSCREEN_FTS_DIRECTORY)/focaltech_hp.o \
