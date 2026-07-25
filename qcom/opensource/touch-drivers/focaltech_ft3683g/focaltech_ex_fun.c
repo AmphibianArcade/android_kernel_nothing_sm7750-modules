@@ -1223,6 +1223,10 @@ static ssize_t fts_fod_enabled_store(struct device *dev,
     if (val != 0 && val != 1)
         return -EINVAL;
 
+    if (ts_data->fod_mode == FTS_FOD_UNLOCK) {
+        return -EAGAIN;
+    }
+
     if (val)
         fts_fod_enable(FTS_FOD_ENABLE);
 
