@@ -574,7 +574,9 @@ int fts_fod_readdata(struct fts_ts_data *ts_data)
             /* FOD up, need do something to tell host */
             ts_data->fod_fp_down = false;
         }
-        fts_fod_report_key(ts_data);
+        if (!ts_data->suspended || ts_data->fts_fod_enabled) {
+            fts_fod_report_key(ts_data);
+        }
         ret = (ts_data->suspended) ? FTS_RETVAL_IGNORE_TOUCHES : 0;
     } else {
         ret = 0;
